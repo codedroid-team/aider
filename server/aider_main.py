@@ -4,7 +4,6 @@ import ssl
 
 from dataclasses import dataclass
 from queue import Queue
-from pydantic import BaseModel
 from threading import Event, Thread
 from typing import Dict, Iterator, List, Optional, Literal, Any
 
@@ -14,6 +13,7 @@ from fastapi import (
     Response,
     status,
 )
+from fastapi.responses import StreamingResponse
 
 from aider.models import Model
 from aider.coders import Coder, ArchitectCoder
@@ -361,19 +361,19 @@ manager = ChatSessionManager()
 
 
 @app.post("/api/chat", status_code=status.HTTP_201_CREATED)
-async def sse(request: Request):
+async def sse(request: Request) -> StreamingResponse:
     if request.method == "OPTIONS":
         response = Response()
         return response
 
-    data = request.json
+    data = await request.json()
     data["reference_list"] = [
         ChatSessionReference(**item) for item in data["reference_list"]
     ]
 
     chat_session_data = ChatSessionData(**data)
 
-    def generate():
+    async def generate():
         for msg in manager.chat(chat_session_data):
             if msg.data:
                 yield f"event: {msg.event}\n"
@@ -382,7 +382,7 @@ async def sse(request: Request):
                 yield f"event: {msg.event}\n"
                 yield f"data:\n\n"
 
-    response = Response(generate(), mimetype="text/event-stream")
+    response = StreamingResponse(generate())
     return response
 
 
@@ -390,7 +390,7 @@ async def sse(request: Request):
 def clear():
     manager.coder.done_messages = []
     manager.coder.cur_messages = []
-    return jsonify({})
+    return Response()
 
 
 @app.put("/api/chat/session", status_code=status.HTTP_201_CREATED)
@@ -398,7 +398,7 @@ def set_history(request: Request):
     data = request.json
     manager.coder.done_messages = data
     manager.coder.cur_messages = []
-    return jsonify({})
+    return Response()
 
 
 @app.post("/api/chat/setting", status_code=status.HTTP_201_CREATED)
@@ -411,13 +411,13 @@ def update_setting(request: Request):
     setting = ChatSetting(**data)
 
     manager.update_model(setting)
-    return jsonify({})
+    return Response()
 
 
 @app.post("/api/chat/confirm/ask", status_code=status.HTTP_201_CREATED)
 def confirm_ask():
     manager.confirm_ask()
-    return jsonify(manager.confirm_ask_result)
+    return Response(manager.confirm_ask_result)
 
 
 @app.post("/api/chat/confirm/reply", status_code=status.HTTP_201_CREATED)
@@ -425,7 +425,7 @@ def confirm_reply(request: Request):
     data = request.json
     manager.confirm_ask_result = data
     manager.confirm_ask_reply()
-    return jsonify({})
+    return Response()
 
 
 if __name__ == "__main__":
