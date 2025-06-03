@@ -14,7 +14,15 @@ from session_data import SessionData, SessionPrompt
 from fastapi.exception_handlers import http_exception_handler
 
 
-from fastapi import Cookie, FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    Cookie,
+    FastAPI,
+    HTTPException,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from gpt_engineer.applications.cli.cli_agent import CliAgent
@@ -30,6 +38,7 @@ from gpt_engineer.core.ai import AI
 from gpt_engineer.core.default.disk_memory import DiskMemory
 from gpt_engineer.core.default.paths import memory_path
 
+
 async def exception_handler(request, exc: Exception):
     """
     This is a wrapper to the default HTTPException handler of FastAPI.
@@ -38,6 +47,7 @@ async def exception_handler(request, exc: Exception):
     logger.debug(request)
     logger.debug(exc)
     return await http_exception_handler(request, exc)
+
 
 backend = InMemoryBackend[UUID, SessionData]()
 
@@ -113,7 +123,9 @@ async def websocket_endpoint(websocket: WebSocket):
             project_path = request_obj["project_path"]
             prompt = request_obj["prompt"]
             file_patterns = request_obj.get("file_patterns", ["*"])
-            exclude_dirs = request_obj.get("exclude_dirs", [])
+            exclude_dirs = request_obj.get(
+                "exclude_dirs", [".git", "__pycache__", ".gradle", "node_modules"]
+            )
             exclude_hidden = request_obj.get("exclude_hidden", True)
             graph_mode = request_obj.get("graph_mode", True)
 
@@ -159,9 +171,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     no_execution=False,
                     skip_file_selection=True,
                     diff_timeout=30,
-                    file_patterns = ["*"],
-                    exclude_dirs = [".git", "__pycache__", ".gradle", "node_modules"],
-                    exclude_hidden = True,
+                    file_patterns=["*"],
+                    exclude_dirs=exclude_dirs,
+                    exclude_hidden=True,
                     http_mode=True,
                     http_prompt=prompt,
                     http_file_patterns=file_patterns,
@@ -249,8 +261,6 @@ async def create_request(
         await backend.create(session, session_data)
     else:
         await backend.update(session, session_data)
-
-    str(session)
 
     json_str = jsonable_encoder(
         {"message": "Request received", "prompt": request.prompt}
@@ -360,5 +370,3 @@ async def update_session(session, session_data, new_session, backend):
         await backend.create(session, session_data)
     else:
         await backend.update(session, session_data)
-
-
