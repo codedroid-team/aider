@@ -227,12 +227,93 @@ wholefile_prompts.py:
 将Python实现的repomap.py移植到Kotlin需要考虑以下问题：
 
 ### 1. 语法tags替代
-- 使用Kotlin兼容的tree-sitter绑定`io.github.tree-sitter:ktreesitter`
+- 使用Kotlin兼容的tree-sitter绑定`io.github.tree-sitter:ktreesitter`,ktreesitter并没有自己的解析器绑定 
 
 ### 2. 图计算库替代
 - 选择JGraphT替代NetworkX
 - JGraphT的pageRank没有带personalization参数构造方法.要参考`networkx/algorithms/link_analysis/pagerank_alg.py`重新实现
-
+- nx.pagerank tagrank输出
+```
+shell.py: 0.349607345945613490
+base_coder.py: 0.106188176902534626
+search_replace.py: 0.099787660164322223
+chat_chunks.py: 0.058809937726244356
+base_prompts.py: 0.056984813687262943
+editblock_coder.py: 0.019549370405923975
+udiff_coder.py: 0.018242133136971189
+patch_coder.py: 0.016027953925723683
+help_prompts.py: 0.015557769052133075
+editor_whole_prompts.py: 0.015148372349727768
+ask_prompts.py: 0.015148372349727768
+udiff_simple_prompts.py: 0.015148372349727768
+wholefile_prompts.py: 0.013564172744507639
+udiff_prompts.py: 0.013476316242513772
+editblock_fenced_prompts.py: 0.012399867698069495
+editor_editblock_prompts.py: 0.011642749124590807
+editor_diff_fenced_prompts.py: 0.011642749124590807
+architect_prompts.py: 0.010518972825171169
+context_prompts.py: 0.010346848532248827
+single_wholefile_func_prompts.py: 0.009727145480603131
+wholefile_func_prompts.py: 0.009292355184581678
+editblock_func_prompts.py: 0.009187377533074734
+editblock_prompts.py: 0.008433266673863102
+wholefile_coder.py: 0.008126773055532277
+single_wholefile_func_coder.py: 0.007983933942318718
+wholefile_func_coder.py: 0.007660408385140368
+context_coder.py: 0.007413201234478425
+editblock_func_coder.py: 0.006281937824053923
+architect_coder.py: 0.006262958634619571
+patch_prompts.py: 0.005970355036203351
+help_coder.py: 0.005798037984103362
+editor_whole_coder.py: 0.005486025728093070
+ask_coder.py: 0.005486025728093070
+editblock_fenced_coder.py: 0.005486025728093070
+udiff_simple.py: 0.005486025728093070
+editor_diff_fenced_coder.py: 0.005486025728093070
+editor_editblock_coder.py: 0.005486025728093070
+__init__.py: 0.005154140375263594
+```
+- JGraphT pagerank personalization改造后 tagrank输出
+```
+shell.py: 0.34898641282062937
+base_coder.py: 0.10103017888384684
+search_replace.py: 0.09566198649667385
+chat_chunks.py: 0.059087033438952635
+base_prompts.py: 0.05531734817206292
+editblock_coder.py: 0.020967243544926507
+help_prompts.py: 0.017541967652607852
+udiff_simple_prompts.py: 0.016984161039993145
+ask_prompts.py: 0.016984161039993145
+editor_whole_prompts.py: 0.016984161039993145
+udiff_coder.py: 0.01685889642244869
+patch_coder.py: 0.013710393639764337
+wholefile_prompts.py: 0.013329829078662106
+udiff_prompts.py: 0.013187486860907732
+architect_prompts.py: 0.011874228006314888
+editor_editblock_prompts.py: 0.011765967288202773
+editor_diff_fenced_prompts.py: 0.011765967288202773
+editblock_fenced_prompts.py: 0.011765967288202773
+context_prompts.py: 0.011630601731679492
+single_wholefile_func_prompts.py: 0.011387998344623174
+wholefile_func_prompts.py: 0.0106023558611432
+editblock_func_prompts.py: 0.01040742125562381
+single_wholefile_func_coder.py: 0.008369125003287067
+editblock_prompts.py: 0.008017546079208224
+wholefile_func_coder.py: 0.007992372761486214
+wholefile_coder.py: 0.007766057522044365
+context_coder.py: 0.007354962118177332
+architect_coder.py: 0.006403852806330769
+patch_prompts.py: 0.0063859572448727794
+editblock_func_coder.py: 0.006162850713555287
+help_coder.py: 0.005835251689208349
+editblock_fenced_coder.py: 0.005458499447407497
+ask_coder.py: 0.005458499447407497
+editor_whole_coder.py: 0.005458499447407497
+editor_editblock_coder.py: 0.005458499447407497
+udiff_simple.py: 0.005458499447407497
+editor_diff_fenced_coder.py: 0.005458499447407497
+__init__.py: 0.005129260181930059
+```
 ### 3. 缓存机制重设计  
 - 使用Caffeine实现内存缓存
 
