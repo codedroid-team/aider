@@ -30,6 +30,8 @@ pillow
 shtab
 oslex
 google-generativeai
+fastapi
+uvicorn
 
 # The proper dependency is networkx[default], but this brings
 # in matplotlib and a bunch of other deps
