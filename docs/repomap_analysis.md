@@ -227,11 +227,101 @@ wholefile_prompts.py:
 将Python实现的repomap.py移植到Kotlin需要考虑以下问题：
 
 ### 1. 语法tags替代
-- 使用Kotlin兼容的tree-sitter绑定`io.github.tree-sitter:ktreesitter`,ktreesitter并没有自己的解析器绑定 
+- 使用java版本的的tree-sitter绑定`io.github.bonede:tree-sitter`来实现scm匹配.
+- [bonede/tree-sitter-ng相关文档](https://github.com/bonede/tree-sitter-ng/blob/main/README.md)
+- 使用scm简单例子
+```kotlin
+        val fileContent = codeFile.readText(StandardCharsets.UTF_8)
+        val fileContentBytes = fileContent.toByteArray(StandardCharsets.UTF_8)
+        val parser = TSParser()
+        parser.setLanguage(language)
+        val tree: TSTree = parser.parseString(null, fileContent)
+        val rootNode: TSNode = tree.getRootNode()
 
+        val query = TSQuery(language, scmQuery)
+        val cursor = TSQueryCursor()
+        cursor.exec(query, rootNode)
+
+        val match = TSQueryMatch()
+        while (cursor.nextMatch(match)) {
+            // create new  Tag
+        }
+```
 ### 2. 图计算库替代
 - 选择JGraphT替代NetworkX
 - JGraphT的pageRank没有带personalization参数构造方法.要参考`networkx/algorithms/link_analysis/pagerank_alg.py`重新实现
+```kotlin
+fun computePageRankJgrapht(
+    graph: Graph<String, DefaultWeightedEdge>,
+    alpha: Double,
+    maxIterations: Int,
+    tol: Double,
+    personalizationRaw: Map<String, Double>
+): Map<String, Double> {
+    val nodes: Set<String> = graph.vertexSet()
+    val nodesSize = nodes.size
+
+    if (nodesSize == 0) return Collections.emptyMap()
+
+    // Normalize personalization vector
+    val personalizationSum = personalizationRaw.values.stream().mapToDouble { it }.sum()
+    val personalization = HashMap<String, Double>()
+    for (node in nodes) {
+        personalization[node] = personalizationRaw.getOrDefault(node, 0.0) / personalizationSum
+    }
+
+    // Initial PageRank vector (uniform)
+    var x = HashMap<String, Double>()
+    for (node in nodes) {
+        x[node] = 1.0 / nodesSize
+    }
+
+    // Precompute out-edge weight sums
+    val outWeightSum = HashMap<String, Double>()
+    for (node in nodes) {
+        val sum = graph.outgoingEdgesOf(node).stream()
+            .mapToDouble { graph.getEdgeWeight(it) }.sum()
+        outWeightSum[node] = sum
+    }
+
+    for (iter in 0 until maxIterations) {
+        val xNew = HashMap<String, Double>()
+        var danglingSum = 0.0
+
+        for (node in nodes) {
+            if (graph.outgoingEdgesOf(node).isEmpty()) {
+                danglingSum += x.getOrDefault(node, 0.0)
+            }
+        }
+
+        for (node in nodes) {
+            var rank = 0.0
+
+            for (edge in graph.incomingEdgesOf(node)) {
+                val src = Graphs.getOppositeVertex(graph, edge, node)
+                val weight = graph.getEdgeWeight(edge)
+                val srcWeightSum = outWeightSum.getOrDefault(src, 0.0)
+
+                if (srcWeightSum > 0) {
+                    rank += x.getOrDefault(src, 0.0) * (weight / srcWeightSum)
+                }
+            }
+
+            val teleport = (1.0 - alpha) * personalization.getOrDefault(node, 0.0)
+            val dangling = alpha * danglingSum * personalization.getOrDefault(node, 0.0)
+            xNew[node] = alpha * rank + teleport + dangling
+        }
+        // Check convergence (L1 norm)
+        var error = 0.0
+        for (node in nodes) {
+            error += abs(xNew.getOrDefault(node, 0.0) - x.getOrDefault(node, 0.0))
+        }
+        x = xNew
+        if (error < tol) break
+    }
+    return x
+}
+```
 - nx.pagerank tagrank输出
 ```
 shell.py: 0.349607345945613490
@@ -316,7 +406,7 @@ __init__.py: 0.005129260181930059
 ```
 ### 3. 缓存机制重设计  
 - 使用Caffeine实现内存缓存
-
+- 重启IDE时会重建缓存
 ### 4. API兼容性
 - 确保输出格式一致
 
