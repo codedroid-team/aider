@@ -780,8 +780,23 @@ class InputOutput:
     # OUTPUT
 
     def ai_output(self, content):
-        hist = "\n" + content.strip() + "\n\n"
-        self.append_chat_history(hist)
+        # Handle pending file contents if any
+        file_content = ""
+        if hasattr(self, 'file_contents') and self.file_contents:
+            processed_files = set()
+            for fname, fcontent in self.file_contents.items():
+                if fname not in processed_files and fcontent and isinstance(fcontent, str):
+                    basename = os.path.basename(fname)
+                    file_content += f"\n### {basename}\n```\n{fcontent}\n```\n"
+                    processed_files.add(fname)
+            self.file_contents.clear()
+        
+        # Ensure LLM response is properly recorded
+        llm_response = content.strip()
+        if llm_response:
+            # Combine file content and LLM response
+            hist = file_content + "\n" + llm_response + "\n\n"
+            self.append_chat_history(hist)
 
     def offer_url(self, url, prompt="Open URL for more info?", allow_never=True):
         """Offer to open a URL in the browser, returns True if opened."""
@@ -1110,6 +1125,7 @@ class InputOutput:
             text = text + "  \n"
         if not text.endswith("\n"):
             text += "\n"
+            
         if self.chat_history_file is not None:
             try:
                 with self.chat_history_file.open("a", encoding=self.encoding, errors="ignore") as f:

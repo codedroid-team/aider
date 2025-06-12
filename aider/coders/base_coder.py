@@ -180,6 +180,7 @@ class Coder:
                 total_tokens_sent=from_coder.total_tokens_sent,
                 total_tokens_received=from_coder.total_tokens_received,
                 file_watcher=from_coder.file_watcher,
+                file_contents=getattr(from_coder, 'file_contents', {}),
             )
             use_kwargs.update(update)  # override to complete the switch
             use_kwargs.update(kwargs)  # override passed kwargs
@@ -201,6 +202,7 @@ class Coder:
         raise UnknownEditFormat(edit_format, valid_formats)
 
     def clone(self, **kwargs):
+        kwargs['file_contents'] = getattr(self, 'file_contents', {})
         new_coder = Coder.create(from_coder=self, **kwargs)
         return new_coder
 
@@ -337,6 +339,7 @@ class Coder:
         file_watcher=None,
         auto_copy_context=False,
         auto_accept_architect=True,
+        file_contents=None,
     ):
         # Fill in a dummy Analytics if needed, but it is never .enable()'d
         self.analytics = analytics if analytics is not None else Analytics()
@@ -401,6 +404,10 @@ class Coder:
             self.done_messages = []
 
         self.io = io
+        if file_contents:
+            self.file_contents = file_contents
+        elif not hasattr(self, 'file_contents'):
+            self.file_contents = {}
 
         self.shell_commands = []
 
@@ -552,7 +559,18 @@ class Coder:
             bold = False
 
     def add_rel_fname(self, rel_fname):
-        self.abs_fnames.add(self.abs_root_path(rel_fname))
+        abs_fname = self.abs_root_path(rel_fname)
+        self.abs_fnames.add(abs_fname)
+        
+        # Read and store file content
+        content = self.io.read_text(abs_fname)
+        if content is not None:
+            if not hasattr(self, 'file_contents'):
+                self.file_contents = {}
+            self.file_contents[abs_fname] = content
+            # Pass file content to IO for history
+            self.io.file_contents = self.file_contents
+            
         self.check_added_files()
 
     def drop_rel_fname(self, fname):
